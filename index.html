@@ -1,0 +1,215 @@
+<!-- FILE: index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+
+<!-- iOS fullscreen + safe area -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- PWA manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- iOS splash + icon -->
+<link rel="apple-touch-icon" href="icons/icon-512.png">
+
+<title>FieldAR -- HUD</title>
+
+<!-- iOS fullscreen (no Safari bars) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- Android fullscreen -->
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- App title -->
+<meta name="apple-mobile-web-app-title" content="FieldAR">
+<link rel="apple-touch-icon" href="icon.png">
+
+<!-- Link manifest -->
+<link rel="manifest" href="manifest.json">
+
+<style>
+  :root{
+    --bg:#111;
+    --panel:#161616;
+    --accent:#2b7bff;
+    --btn:#2b2b2b;
+    --text:#eaeaea;
+
+    /* Safe-area variables for iOS */
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+    --safe-left: env(safe-area-inset-left);
+    --safe-right: env(safe-area-inset-right);
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  }
+
+  #app {
+    display:flex;
+    height:100vh;
+    width:100vw;
+    overflow:hidden;
+    align-items:stretch;
+
+    /* apply safe area padding */
+    padding-top:var(--safe-top);
+    padding-bottom:var(--safe-bottom);
+    padding-left:var(--safe-left);
+    padding-right:var(--safe-right);
+    box-sizing:border-box;
+  }
+
+  /* Side panel removed per your request -- will be replaced with overlay explorer later */
+
+  /* ===== TOP TOOLBAR REWORK ===== */
+#toolbar {
+    height: 34px;               /* 25% shorter */
+    min-height: 34px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:4px;
+    background:linear-gradient(180deg,#111,#0f0f0f);
+    border-bottom:1px solid #222;
+    z-index:60;
+    overflow-x:auto;            /* enable horizontal scroll */
+    overflow-y:hidden;
+    -webkit-overflow-scrolling: touch; /* smooth iOS scrolling */
+    white-space: nowrap;        /* keep buttons in one line */
+}
+
+/* Scrollbar hidden but functional */
+#toolbar::-webkit-scrollbar {
+    height: 0px;
+}
+
+/* Updated button style for shorter height */
+.btn.small {
+    padding:4px 6px;            /* smaller vertical size */
+    font-size:12px;
+    border-radius:6px;
+}
+  .btn {
+    background:var(--btn);
+    color:var(--text);
+    border:1px solid #2a2a2a;
+    padding:6px 8px;
+    border-radius:6px;
+    font-size:12px;
+    cursor:pointer;
+  }
+
+  #canvasWrap {
+    position:relative;
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#222;
+    overflow:hidden;
+  }
+  canvas { background:#333; display:block; max-width:100%; max-height:100%; }
+
+ #debugConsole {
+  max-height: 60px;       /* ~3–4 visible lines */
+  min-height: 40px;       /* never collapse too small */
+  background:#060606;
+  color:#0f0;
+  font-family:monospace;
+  font-size:12px;
+  overflow-y:auto;        /* allows scrolling back through logs */
+  padding:6px;
+  box-sizing:border-box;
+  border-top:1px solid #111;
+}
+
+  #floatingControls {
+    position:absolute;
+    top:8px;
+    right:8px;
+    display:flex;
+    gap:6px;
+    z-index:70;
+  }
+  .floatBtn {
+    background:rgba(0,0,0,0.45);
+    padding:8px;
+    border-radius:8px;
+    border:1px solid #222;
+    color:var(--text);
+    cursor:pointer;
+    font-size:13px;
+  }
+</style>
+</head>
+
+<body>
+<div id="app">
+
+  <div id="mainArea">
+
+    <!-- Top toolbar -->
+    <div id="toolbar">
+
+      <button id="showHideToolbarBtn" class="btn">Hide UI</button>
+
+      <label for="baseImageInput" class="btn">Load Base</label>
+      <input id="baseImageInput" type="file" accept="image/*" style="display:none">
+
+      <label for="addOverlayInput" class="btn">Add Overlay</label>
+      <input id="addOverlayInput" type="file" accept="image/*" style="display:none">
+      
+      <button id="polygon-btn">Polygon</button>
+      <button id="finish-btn">Finish</button>
+      
+      <button id="deleteBtn" class="btn">Delete</button>
+
+      <button id="saveBtn" class="btn">Save</button>
+      <button id="loadBtn" class="btn">Load</button>
+      <input id="loadProjectFile" type="file" accept="application/json" style="display:none">
+
+      <button id="convertPngBtn" class="btn">PNG</button>
+      <button id="removeBgBtn" class="btn">BG</button>
+
+      <div style="flex:1"></div>
+
+      <button id="undoBtn" class="btn">Undo</button>
+      <button id="redoBtn" class="btn">Redo</button>
+    </div>
+
+    <div id="canvasWrap">
+      <canvas id="annotatorCanvas"></canvas>
+      
+    </div>
+
+    <div id="debugConsole">[LOG] Debug console ready<br></div>
+
+  </div>
+</div>
+
+<!-- Fabric.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+
+<!-- FieldAR main engine -->
+<script src="fieldar.js"></script>
+
+<!-- PWA Service Worker -->
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+}
+</script>
+
+</body>
+</html>
